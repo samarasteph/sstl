@@ -1,0 +1,22 @@
+CC=c++
+LIB=libtimer_wrapper.so
+
+timer_wrapper: timer_wrapper.o
+	$(CC) -o $(LIB) -shared timer_wrapper.o  -lboost_system  -lpthread
+
+timer_wrapper.o: timer_wrapper.cc timer_wrapper.h
+	$(CC)  -Wall -std=c++11 -c timer_wrapper.cc -o timer_wrapper.o -fPIC
+
+test: test/timer_test
+
+test/timer_test: test/test.cpp timer_wrapper.cc timer_wrapper.h
+	$(CC) -g -o test/timer_test test/test.cpp timer_wrapper.cc -lboost_system -lpthread /usr/lib/libgtest_main.a -D __TRACE__
+
+
+all: test timer_wrapper
+
+clean:
+	rm -f timer_wrapper.o test/timer_test
+
+runtest:
+	test/timer_test
