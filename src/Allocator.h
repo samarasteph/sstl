@@ -38,8 +38,6 @@
 #else
 #define TRACE(log)
 #define TRY_CATCH_DEBUG(expr, msg, log) expr;
-#else
-#define TRACE(log)
 #endif
 
 #define HEX_ADDR(addr) std::hex << std::setw(8) << std::setfill('0') << addr << std::dec
