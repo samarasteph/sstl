@@ -16,7 +16,7 @@ void thread_sleep(const TimeUnit& elapse) {
 }
 
 template<size_t Size>
-constexpr std::array<int,Size> range(int min){
+std::array<int,Size> range(int min){
 
 	std::array<int,Size> a;
 
@@ -32,6 +32,7 @@ public:
 	NotifiedMock(const std::string& name): m_called(0), _name(name){}
 	bool notify () override {
 		m_called += 1;
+		return true;
 	}
 	uint32_t called() const { return m_called; }
 	void set_name(const std::string& name){ _name = name; }
@@ -58,10 +59,11 @@ public:
 			sec -= 1;
 			nsec = 1000000000 - nsec; 
 		}
-		if (log){
+		if (_log){
 			std::cout << _name << " called " << m_called << " elapsed=" << sec << "." << std::setw(9) << std::setfill('0') << nsec  << std::endl;
 		}
 		_tsp = tsp; 
+		return true;
 	}
 	void get_time(struct timespec* ptsp){
 		clock_gettime(CLOCK_MONOTONIC, ptsp);

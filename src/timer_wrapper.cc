@@ -217,7 +217,7 @@ bool MutualTimer::is_running() const {
 }
 
 template<size_t Size>
-constexpr void init_scale(uint64_t scales[Size], const uint64_t ratio){
+void init_scale(uint64_t scales[Size], const uint64_t ratio){
 	uint64_t step = 1000 / Size;
 	uint64_t accum = step;
 

@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.10)
 project(sslt LANGUAGES CXX VERSION 1.0)
 
 include(CTest)
+enable_testing()
 
 set(CMAKE_SOURCE_DIR src)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
