@@ -8,16 +8,17 @@ typedef int bf_t;
 template<class tKey>
 class Node {
 	public:
-	Node(tKey k): key(k), pl(nullptr),pr(nullptr), bf(0){}
+	Node(tKey k): key(k), pl(nullptr),pr(nullptr), height(0){}
 	tKey key;
 	Node<tKey> *pl, *pr;
-	bf_t bf; //balance factor = h(Right(node)) - h(Left(node))
+	int height;
 };
 
 #define _LEFT(n) (n)->pl
 #define _RIGHT(n) (n)->pr
 #define _KEY(n) (n)->key
-#define _BF(n) (n)->bf
+#define _BF(n) _bf(n)
+#define _HEIGHT(n) (n)->height
 
 template <class tKey>
 std::ostream& operator << (std::ostream& os, const Node<tKey>* pn)  {
@@ -50,18 +51,45 @@ class Tree {
 				else ppn = &_LEFT(*ppn);
 			}
 			*ppn = new MyNode(k);
-			
+			path.pop();
+			int inc = (not path.empty() and (_HEIGHT(*path.top()) == 0)) ? 1 : 0;
+
 			while(not path.empty()){
 				ppn = path.top();
-				_bf(*ppn);
+				(*ppn)->height += inc;
 				_rebalance(ppn);
 				path.pop();
 			}	
 		}
 		void remove(tKey k) {
-			auto ppn = _find(k);
-			if (ppn) {
-				
+			std::stack<MyNode**> path;
+			MyNode** ppn = &root;
+			while (*ppn){
+				path.push(ppn);
+				if (_KEY(*ppn) == k) break;
+				else if (_KEY(*ppn) > k) ppn = &_LEFT(*ppn);
+				else ppn = &_RIGHT(*ppn);
+			}
+			if (*ppn){
+				if (not _LEFT(*ppn) and not _RIGHT(*ppn)){
+					delete *ppn;
+					*ppn = nullptr;
+				}
+				else if (_LEFT(*ppn) and _RIGHT(*ppn)){
+
+				}
+				else {
+					if (_LEFT(*ppn)){
+						MyNode* pn = *ppn;
+						*ppn = _LEFT(*ppn);
+						delete pn;
+					}
+					else {
+						MyNode* pn = *ppn;
+						*ppn = _RIGHT(*ppn);
+						delete pn;
+					}
+				}
 			}
 		}
 		void print(std::ostream& os){
@@ -130,9 +158,8 @@ class Tree {
 		_LEFT(pn) = _RIGHT(*ppn);
 		_RIGHT(*ppn) = pn;
 
-		int hr = _right_height(pn), hl = _left_height(pn);
-		_BF(pn) = hr - hl;
-		_BF(*ppn) = std::max<int>(hr,hl)+1 - _left_height(*ppn);
+		_HEIGHT(pn) = _max_height(pn);
+		_HEIGHT(*ppn) = _max_height(*ppn);
 	}
 	void _left_rot(MyNode** ppn){
 		MyNode* pn = *ppn;
@@ -141,9 +168,8 @@ class Tree {
 		_RIGHT(pn) = _LEFT(*ppn);
 		_LEFT(*ppn) = pn;
 		
-		int hr = _right_height(pn), hl = _left_height(pn);
-		_BF(pn) = hr - hl;
-		_BF(*ppn) = _right_height(*ppn) - std::max<int>(hr,hl) - 1;
+		_HEIGHT(pn) = _max_height(pn);
+		_HEIGHT(*ppn) = _max_height(*ppn);
 	}
 	MyNode** _find(tKey k){
 		MyNode** ppn = &root;
@@ -154,36 +180,33 @@ class Tree {
 		}
 		return nullptr;
 	}
-	void _bf(MyNode* pn){
+	bf_t _bf(const MyNode* pn) const {
 		bf_t bf = 0;
-		//if (_LEFT(pn))  bf +=  - std::abs(_BF(_LEFT(pn)))  - 1;
-		//if (_RIGHT(pn)) bf +=    std::abs(_BF(_RIGHT(pn))) + 1;
-		pn->bf = _right_height(pn) - _left_height(pn);
+		if (_LEFT(pn))  bf -=  _HEIGHT(_LEFT(pn));
+		if (_RIGHT(pn)) bf +=  _HEIGHT(_RIGHT(pn));
+		return bf;
 	}
 	int _left_height(MyNode* pn){
 		if (pn and _LEFT(pn)) 
-			return (1 + _max_height(_LEFT(pn)));
+			return 1 + _HEIGHT(_LEFT(pn));
 		return 0;
 	}
 	int _right_height(MyNode* pn){
 		if (pn and _RIGHT(pn)) 
-			return (1 + _max_height(_RIGHT(pn)));
+			return 1 + _HEIGHT(_RIGHT(pn));
 		return 0;
 	}
 	int _max_height(MyNode* pn){
-		int hl = 0, hr = 0;
-		hl = _left_height(pn);
-		hr = _right_height(pn);
-		return std::max(hl,hr);	
+		return std::max(_left_height(pn),_right_height(pn));	
 	}
 	MyNode* root;
 };
 
 int main () {
 
-	Tree<int> tree;
+	Tree<double> tree;
 
-	int key;
+	double key;
 	while(not std::cin.eof()){
 		std::cin >> key;
 		if (std::cin) tree.add(key);
