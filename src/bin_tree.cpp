@@ -26,7 +26,7 @@ std::ostream& operator << (std::ostream& os, const Node<tKey>* pn)  {
 	return os;
 }
 
-template<class tKey>
+template<class tKey, class tCmp=std::less<tKey>>
 class Tree {
 	typedef Node<tKey> MyNode;
 	public:
@@ -45,52 +45,67 @@ class Tree {
 		void add(tKey k){
 			MyNode** ppn = &root;
 			std::stack<MyNode**> path;
+			tCmp cmp;
 			while(*ppn){
 				path.push(ppn);
-				if (_KEY(*ppn) < k) ppn = &_RIGHT(*ppn);
+				if (cmp(_KEY(*ppn), k)) ppn = &_RIGHT(*ppn);
 				else ppn = &_LEFT(*ppn);
 			}
 			*ppn = new MyNode(k);
-			path.pop();
-			int inc = (not path.empty() and (_HEIGHT(*path.top()) == 0)) ? 1 : 0;
-
 			while(not path.empty()){
 				ppn = path.top();
-				(*ppn)->height += inc;
+				_HEIGHT(*ppn) = _max_height(*ppn);
 				_rebalance(ppn);
 				path.pop();
-			}	
+			}
 		}
-		void remove(tKey k) {
+		bool remove(tKey k) {
 			std::stack<MyNode**> path;
 			MyNode** ppn = &root;
+			tCmp cmp;
 			while (*ppn){
 				path.push(ppn);
-				if (_KEY(*ppn) == k) break;
-				else if (_KEY(*ppn) > k) ppn = &_LEFT(*ppn);
+				if (not cmp(_KEY(*ppn),k) and not cmp(k,_KEY(*ppn))) break;
+				else if (not cmp(_KEY(*ppn),k)) ppn = &_LEFT(*ppn);
 				else ppn = &_RIGHT(*ppn);
 			}
 			if (*ppn){
+				MyNode* pn = *ppn;
 				if (not _LEFT(*ppn) and not _RIGHT(*ppn)){
-					delete *ppn;
 					*ppn = nullptr;
 				}
 				else if (_LEFT(*ppn) and _RIGHT(*ppn)){
-
+					MyNode** replace,*child;
+					
+					replace = &_RIGHT(*ppn); // get 
+					path.push(replace);
+					while(_LEFT(*replace)){
+						replace = &_LEFT(*replace);
+						path.push(replace);
+					}
+					_KEY(*ppn) = std::move(_KEY(*replace));
+					pn = *replace; // delete pn
+					*replace = _RIGHT(*replace);
 				}
 				else {
 					if (_LEFT(*ppn)){
-						MyNode* pn = *ppn;
 						*ppn = _LEFT(*ppn);
-						delete pn;
 					}
 					else {
-						MyNode* pn = *ppn;
 						*ppn = _RIGHT(*ppn);
-						delete pn;
 					}
 				}
+				delete pn;
+				path.pop();
+				while(not path.empty()){
+					ppn = path.top();
+					_HEIGHT(*ppn) = _max_height(*ppn);
+					_rebalance(ppn);
+					path.pop();
+				}
+				return true; //found
 			}
+			return false;
 		}
 		void print(std::ostream& os){
 			using namespace std;
@@ -117,7 +132,7 @@ class Tree {
 					++it;
 				}
 				for (const MyNode* pn:nodes){
-					os << "\t" << _KEY(pn) << " [label=\"" << _KEY(pn) << " bf=" << _BF(pn) << "\"]" << std::endl;
+					os << "\t" << _KEY(pn) << " [label=\"" << _KEY(pn) << " bf=" << _BF(pn) /*<< " h=" << _HEIGHT(pn)*/ << "\"]" << std::endl;
 				}
 				os << std::endl;
 			}
@@ -173,43 +188,73 @@ class Tree {
 	}
 	MyNode** _find(tKey k){
 		MyNode** ppn = &root;
+		tCmp cmp;
 		while(*ppn){
-			if(_KEY(*ppn) == k) return ppn;
-			if(_KEY(*ppn) > k) ppn = &_LEFT(ppn);
+			if(not cmp(_KEY(*ppn),k) and not cmp(k,_KEY(*ppn))) return ppn;
+			if(cmp(_KEY(*ppn),k)) ppn = &_LEFT(ppn);
 			else ppn = &_RIGHT(ppn);
 		}
 		return nullptr;
 	}
 	bf_t _bf(const MyNode* pn) const {
-		bf_t bf = 0;
-		if (_LEFT(pn))  bf -=  _HEIGHT(_LEFT(pn));
-		if (_RIGHT(pn)) bf +=  _HEIGHT(_RIGHT(pn));
-		return bf;
+		return _right_height(pn) - _left_height(pn);
 	}
-	int _left_height(MyNode* pn){
+	int _left_height(const MyNode* pn) const {
 		if (pn and _LEFT(pn)) 
 			return 1 + _HEIGHT(_LEFT(pn));
 		return 0;
 	}
-	int _right_height(MyNode* pn){
+	int _right_height(const MyNode* pn) const {
 		if (pn and _RIGHT(pn)) 
 			return 1 + _HEIGHT(_RIGHT(pn));
 		return 0;
 	}
 	int _max_height(MyNode* pn){
-		return std::max(_left_height(pn),_right_height(pn));	
+		return std::max(_left_height(pn),_right_height(pn));
 	}
 	MyNode* root;
 };
+
+#define LOG_DEBUG 	0
 
 int main () {
 
 	Tree<double> tree;
 
 	double key;
+	//std::cout << "starting read:" << std::endl;
 	while(not std::cin.eof()){
-		std::cin >> key;
-		if (std::cin) tree.add(key);
+		char action;
+		std::cin >> action;
+		#if LOG_DEBUG
+		std::cout << "action read=" << action << std::endl;
+		#endif
+		if (action == '+') {
+			std::cin >> key;
+			if (std::cin) { 
+				#if LOG_DEBUG
+				std::cout << "add key=" << key << std::endl;
+				#endif
+				tree.add(key);
+			}
+		}
+		else if (action == '-') {
+			std::cin >> key;
+			if (std::cin) { 
+				#if LOG_DEBUG
+				std::cout << "remove key=" << key << std::endl;
+				if(not tree.remove(key)) std::cout << key << " not found" << std::endl;
+				#else 
+				tree.remove(key);
+				#endif
+				
+			}
+		}
+		#if LOG_DEBUG
+		else {
+			std::cout << "bad action " << action << std::endl;
+		}
+		#endif
 	}
 	
 	tree.print(std::cout);
