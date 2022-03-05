@@ -1,6 +1,7 @@
 #include <fstream>
 #include <ctime>
 #include <sstream>
+#include <signal.h>
 #include <gtest/gtest.h>
 
 std::ostringstream oss;
