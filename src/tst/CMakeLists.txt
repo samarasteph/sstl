@@ -7,7 +7,8 @@ set(BINARY ${CMAKE_PROJECT_NAME}_test)
 find_package(GTest REQUIRED)
 find_file(ALLOCATOR_CPP NAMES Allocator.cpp PATHS ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
-set(CPP_SRC test_allocator.cpp test_double_chained_list.cpp test_mutual_timer.cpp test_rwlock.cpp test_observable.cpp)
+set(CPP_SRC test_allocator.cpp test_double_chained_list.cpp test_mutual_timer.cpp test_rwlock.cpp test_observable.cpp 
+        test_bin_tree.cpp)
 
 include_directories(${GTEST_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/..)
 

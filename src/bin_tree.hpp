@@ -6,11 +6,11 @@
 typedef int bf_t;
 
 template<class tKey>
-class Node {
+class AVLNode {
 	public:
-	Node(tKey k): key(k), pl(nullptr),pr(nullptr), height(0){}
+	AVLNode(tKey k): key(k), pl(nullptr),pr(nullptr), height(0){}
 	tKey key;
-	Node<tKey> *pl, *pr;
+	AVLNode<tKey> *pl, *pr;
 	int height;
 };
 
@@ -21,17 +21,17 @@ class Node {
 #define _HEIGHT(n) (n)->height
 
 template <class tKey>
-std::ostream& operator << (std::ostream& os, const Node<tKey>* pn)  {
+std::ostream& operator << (std::ostream& os, const AVLNode<tKey>* pn)  {
 	os << _KEY(pn);
 	return os;
 }
 
 template<class tKey, class tCmp=std::less<tKey>>
-class Tree {
-	typedef Node<tKey> MyNode;
+class AVLTree {
+	typedef AVLNode<tKey> MyNode;
 	public:
-		Tree(): root(nullptr){}
-		~Tree() { 
+		AVLTree(): root(nullptr){}
+		~AVLTree() { 
 			std::list<MyNode*> nodes;
 			if (root) nodes.push_back(root);
 			while(!nodes.empty()){
@@ -214,50 +214,3 @@ class Tree {
 	}
 	MyNode* root;
 };
-
-#define LOG_DEBUG 	0
-
-int main () {
-
-	Tree<double> tree;
-
-	double key;
-	//std::cout << "starting read:" << std::endl;
-	while(not std::cin.eof()){
-		char action;
-		std::cin >> action;
-		#if LOG_DEBUG
-		std::cout << "action read=" << action << std::endl;
-		#endif
-		if (action == '+') {
-			std::cin >> key;
-			if (std::cin) { 
-				#if LOG_DEBUG
-				std::cout << "add key=" << key << std::endl;
-				#endif
-				tree.add(key);
-			}
-		}
-		else if (action == '-') {
-			std::cin >> key;
-			if (std::cin) { 
-				#if LOG_DEBUG
-				std::cout << "remove key=" << key << std::endl;
-				if(not tree.remove(key)) std::cout << key << " not found" << std::endl;
-				#else 
-				tree.remove(key);
-				#endif
-				
-			}
-		}
-		#if LOG_DEBUG
-		else {
-			std::cout << "bad action " << action << std::endl;
-		}
-		#endif
-	}
-	
-	tree.print(std::cout);
-	return 0;
-
-}

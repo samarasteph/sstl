@@ -10,4 +10,4 @@ add_subdirectory(tst)
 # specify the C++ standard
 set(CMAKE_CXX_STANDARD 11)
 
-add_library(${BINARY} Allocator.cpp rwlock.cpp timer_wrapper.cc bin_tree.cpp)
+add_library(${BINARY} Allocator.cpp rwlock.cpp timer_wrapper.cc bin_tree.hpp)
