@@ -3,7 +3,7 @@ enable_testing()
 # specify the C++ standard
 set(CMAKE_CXX_STANDARD 11)
 set(BINARY ${CMAKE_PROJECT_NAME}_test)
-
+# set GTEST_ROOT
 find_package(GTest REQUIRED)
 find_file(ALLOCATOR_CPP NAMES Allocator.cpp PATHS ${CMAKE_CURRENT_SOURCE_DIR}/..)
 

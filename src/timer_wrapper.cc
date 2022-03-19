@@ -2,6 +2,7 @@
 #include <time.h>
 #include <memory>
 #include <set>
+//#define __TRACE__ 1
 #ifdef __TRACE__
 #include <iostream>
 #define TRACE(trace) std::cout << trace << std::endl
@@ -100,6 +101,7 @@ bool MutualTimer::start(){
 			this->_private_running_loop();
 		} );
 		m_condv.notify_one();
+		return true;
 	}
 	return false;
 }
@@ -118,6 +120,10 @@ bool MutualTimer::stop() {
 	return false;
 }
 
+constexpr uint64_t KILO=1000;
+constexpr uint64_t MEGA=KILO*KILO;
+constexpr uint64_t GIGA=KILO*MEGA;
+
 typedef struct __TIMER_ITEM__ {
 	typedef struct __TIMER_ITEM__ Type;
 	typedef struct __TIMER_ITEM__* PointerType;
@@ -131,34 +137,34 @@ typedef struct __TIMER_ITEM__ {
 		switch (tu){
 		case MutualTimer::tm_period::TIME_UNIT::SECONDS:
 		{
-			nanos = tmp.elapse * 1000000000;
+			nanos = tmp.elapse * GIGA;
 			splited[MutualTimer::tm_period::TIME_UNIT::SECONDS] = tmp.elapse;
 			break;
 		}
 		case MutualTimer::tm_period::TIME_UNIT::MILLISECONDS:
 		{
-			nanos =  tmp.elapse * 1000000;
-			splited[MutualTimer::tm_period::TIME_UNIT::SECONDS] = tmp.elapse / 1000;
-			splited[MutualTimer::tm_period::TIME_UNIT::MILLISECONDS] = tmp.elapse % 1000;
+			nanos =  tmp.elapse * MEGA;
+			splited[MutualTimer::tm_period::TIME_UNIT::SECONDS] = tmp.elapse / KILO;
+			splited[MutualTimer::tm_period::TIME_UNIT::MILLISECONDS] = tmp.elapse % KILO;
 			break;
 		}
 		case MutualTimer::tm_period::TIME_UNIT::MICROSECONDS:
 		{
-			nanos = tmp.elapse * 1000;
-			sec = tmp.elapse / 1000000;
-			millisec = (tmp.elapse % 1000000) / 1000;
+			nanos = tmp.elapse * KILO;
+			sec = tmp.elapse / MEGA;
+			millisec = (tmp.elapse % MEGA) / KILO;
 			splited[MutualTimer::tm_period::TIME_UNIT::SECONDS] = sec;
 			splited[MutualTimer::tm_period::TIME_UNIT::MILLISECONDS] = millisec;
-			splited[MutualTimer::tm_period::TIME_UNIT::MICROSECONDS] = millisec % 1000;
+			splited[MutualTimer::tm_period::TIME_UNIT::MICROSECONDS] = millisec % KILO;
 			break;
 		}
 		case MutualTimer::tm_period::TIME_UNIT::NANOSECONDS:
 		{
 			nanos = tmp.elapse;
-			sec = tmp.elapse / 1000000000;
-			millisec = (tmp.elapse % 1000000000) / 1000000;
-			microsec = (tmp.elapse % 1000000) / 1000;
-			nano = (tmp.elapse % 1000000) % 1000;
+			sec = tmp.elapse / GIGA;
+			millisec = (tmp.elapse % GIGA) / MEGA;
+			microsec = (tmp.elapse % MEGA) / KILO;
+			nano = (tmp.elapse % KILO);
 			splited[MutualTimer::tm_period::TIME_UNIT::SECONDS] = sec;
 			splited[MutualTimer::tm_period::TIME_UNIT::MILLISECONDS] = millisec;
 			splited[MutualTimer::tm_period::TIME_UNIT::MICROSECONDS] = microsec;
@@ -167,7 +173,6 @@ typedef struct __TIMER_ITEM__ {
 		}
 		default:
 			nanos = 0;
-
 		}
 		if (splited[MutualTimer::tm_period::TIME_UNIT::SECONDS]>0){
 			tu = MutualTimer::tm_period::TIME_UNIT::SECONDS;
@@ -233,8 +238,8 @@ void init_scale(uint64_t scales[Size], const uint64_t ratio){
 typedef struct __TIME_DISPATCHER__ {
 	typedef MutualTimer::tm_period::TIME_UNIT TU;
 
-	static uint64_t scales[4][SCALE_LENGTH];
-	static const uint64_t ratios[4];
+	static uint64_t scales[NB_UNITS][SCALE_LENGTH];
+	static const uint64_t ratios[NB_UNITS];
 
 	typedef struct __TD_Node__ {
 		__TD_Node__(): p_next(nullptr), p_prev(nullptr), time(0) {}
@@ -250,8 +255,8 @@ typedef struct __TIME_DISPATCHER__ {
  
 	uint32_t get_node_slot(_PTR_SP_ p){
 		uint32_t slot = p->tu * SCALE_LENGTH;
-		slot += std::min(SCALE_LENGTH-1, p->splited[p->tu] / (1000 / SCALE_LENGTH));
-		//TRACE("insert Unit: " <<  p->tu << " slot " << slot );
+		slot += std::min<uint32_t>(SCALE_LENGTH-1, p->splited[p->tu] / (KILO / SCALE_LENGTH));
+		TRACE("insert Unit: " <<  int(p->tu) << " slot " << slot );
 		return slot;
 	}
 
@@ -271,13 +276,12 @@ typedef struct __TIME_DISPATCHER__ {
 	PTDNode insert(PTDNode n, PTDNode* ppslot){
 
 		PTDNode* pp_next = ppslot;
-		PTDNode it = nullptr;
-
+		PTDNode prev = nullptr;
 		while (*pp_next and (*pp_next)->time < n->time){
-			it = *pp_next;
+			prev = *pp_next;
 			pp_next = &(*pp_next)->p_next ;
 		}
-		n->p_prev = it;
+		n->p_prev = prev;
 		n->p_next = *pp_next;
 		if (*pp_next){
 			(*pp_next)->p_prev = n;
@@ -301,7 +305,7 @@ typedef struct __TIME_DISPATCHER__ {
 		if (pn->p_next){
 			pn->p_next->p_prev = pn->p_prev;
 		}
-		return pn;
+		return pn->p_next;
 	}
 
 	PTDNode remove(PTDNode pn, uint32_t index_node){
@@ -320,35 +324,42 @@ typedef struct __TIME_DISPATCHER__ {
 		}
 		return pn->p_next;
 	}
+	void reschedule(PTDNode pn, uint32_t index_node){
 
+	}
 	uint64_t trigger_timers(uint64_t now){
 		uint64_t sleep_ns = 0xFFFFFFFFFFFFFFFF;
+		std::set<uint> scpy = slots; 
+		uint count = 0;
 
-		for ( uint index: slots ){
+		for ( uint index: scpy ){
 
-			//TRACE("Trigger timer slot: " << index);
+			TRACE("Trigger timer slot: " << index);
 			PTDNode pn = NODES[index];
 			while(pn and pn->time <= now){
 				pn->item->pno->notify();
 				pn->time = now + pn->item->nanos;
 				pn = pn->p_next;
+				count += 1;
 			}
 			
 			PTDNode p = NODES[index], pnext;
-			PTDNode* pinsert = pn ? &pn->p_next : &NODES[index]; 
+			PTDNode* pinsert = pn ? &pn->p_next : &NODES[index];
 			while (p && p != pn){
 				pnext = remove(p, index);
 				insert(p, pinsert);
+				if(slots.find(index)==slots.end()){
+					slots.insert(index);
+				}
 				p = pnext;
 			}
 			sleep_ns = std::min<uint64_t>(sleep_ns, NODES[index]->time);
-				
 		}
 		return sleep_ns - now;
 	}
 
 	//100 for each TIME_UNIT: SECONDS, MILLISECONDS, MICROSECONDS, NANOSECONDS
-	PTDNode NODES[400];
+	PTDNode NODES[NB_UNITS*SCALE_LENGTH];
 	std::set<uint> slots;
 
 	class Init {
@@ -371,8 +382,8 @@ const uint64_t TIME_DISPATCHER::ratios[TIME_DISPATCHER::TU::MICROSECONDS] = 1000
 const uint64_t TIME_DISPATCHER::ratios[TIME_DISPATCHER::TU::MILLISECONDS] = 1000000;
 const uint64_t TIME_DISPATCHER::ratios[TIME_DISPATCHER::TU::SECONDS] 	  = 1000000000;
 */
-const uint64_t TIME_DISPATCHER::ratios[4] = { 1, 1000, 1000000, 1000000000 };
-uint64_t TIME_DISPATCHER::scales[4][SCALE_LENGTH];
+const uint64_t TIME_DISPATCHER::ratios[NB_UNITS] = { 1, KILO, MEGA, GIGA };
+uint64_t TIME_DISPATCHER::scales[NB_UNITS][SCALE_LENGTH];
 TIME_DISPATCHER::Init TIME_DISPATCHER::init;
 
 void MutualTimer::_private_running_loop() {
@@ -409,7 +420,6 @@ void MutualTimer::_private_running_loop() {
 			PTDNode pn = dispatcher.insert_new(p, now);
 			registered_items.insert( std::make_pair(p->pno, pn) );
 		}
-
 		for (auto it = std::begin(unregistered_exch); it != std::end(unregistered_exch); ++it ) {
 			MutualTimer::INotified* pn = reinterpret_cast<MutualTimer::INotified*>(*it);
 			auto itpn = registered_items.find(pn);
@@ -420,14 +430,15 @@ void MutualTimer::_private_running_loop() {
 		}
 		if (!registered_items.empty()) {
 			//triggers elapsed timers
-			uint64_t sleep = dispatcher.trigger_timers(now);
+			uint64_t sleep = dispatcher.trigger_timers(Common_getSysclock());
 			TRACE("Timers trigerred: next in " << sleep << " nanoseconds");
 			future.wait_for(std::chrono::nanoseconds(sleep));
 		}else {
-			//TRACE("No timer registered wait");
+			TRACE("No timer registered: wait");
 			std::unique_lock<std::mutex> lock(cond_mx);
-			m_condv.wait(lock);
-			//TRACE("Wake up, continue loop");
+			m_condv.wait(lock, [&registered_items,this](){ return not registered_items.empty() or not m_running; });
+			TRACE("Wake up, continue loop");
 		}
 	}
+	TRACE("STOP TIMER loop");
 }

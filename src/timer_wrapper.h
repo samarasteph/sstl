@@ -49,6 +49,8 @@ private:
 	static TimerPrivateService	tm_io_service;
 };
 
+constexpr size_t NB_UNITS = 4;
+
 class MutualTimer {
 public:
 	class INotified {

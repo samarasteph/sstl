@@ -1,6 +1,6 @@
 configure_file(Config.h.in Config.h)
 set(BINARY ${CMAKE_PROJECT_NAME})
-
+# set BOOSTROOT
 find_package(Boost REQUIRED COMPONENTS system)
 
 include_directories(src ${Boost_INCLUDE_DIRS})
