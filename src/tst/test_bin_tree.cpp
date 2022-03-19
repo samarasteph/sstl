@@ -2,12 +2,13 @@
 
 #define LOG_DEBUG 	0
 
-int TEST () {
-
-	AVLTree<double> tree;
-
+template <class tTree>
+void test() {
+	tTree tree;
 	double key;
-	//std::cout << "starting read:" << std::endl;
+	#if LOG_DEBUG
+	std::cout << "starting read:" << std::endl;
+	#endif
 	while(not std::cin.eof()){
 		char action;
 		std::cin >> action;
@@ -43,6 +44,12 @@ int TEST () {
 	}
 	
 	tree.print(std::cout);
+}
+
+int TEST () {
+
+	test<AVLTree<double>>();
+	test<RedBlackTree<double>>();
 	return 0;
 
 }

@@ -26,49 +26,145 @@ std::ostream& operator << (std::ostream& os, const AVLNode<tKey>* pn)  {
 	return os;
 }
 
-template<class tKey, class tCmp=std::less<tKey>>
-class AVLTree {
-	typedef AVLNode<tKey> MyNode;
+enum RBType { RED, BLACK };
+template<class tKey>
+class RedBlackTreeNode {
 	public:
-		AVLTree(): root(nullptr){}
-		~AVLTree() { 
-			std::list<MyNode*> nodes;
-			if (root) nodes.push_back(root);
-			while(!nodes.empty()){
-				MyNode* pn = nodes.front();
-				if (_LEFT(pn))	nodes.push_back(_LEFT(pn));
-				if (_RIGHT(pn)) nodes.push_back(_RIGHT(pn));
-				delete pn;
-				nodes.pop_front();
+	RedBlackTreeNode(tKey k): key(k), pl(nullptr),pr(nullptr), type(RED){}
+	tKey key;
+	RedBlackTreeNode<tKey> *pl, *pr;
+	RBType type;
+};
+
+template <class tKey>
+std::ostream& operator << (std::ostream& os, const RedBlackTreeNode<tKey>* pn)  {
+	os << _KEY(pn);
+	return os;
+}
+
+template<class tKey, class tNode, class tCmp>
+class BinaryTree {
+protected:
+	typedef tNode MyNode;
+
+	BinaryTree(): root(nullptr){}
+	~BinaryTree() { 
+		std::list<MyNode*> nodes;
+		if (root) nodes.push_back(root);
+		while(!nodes.empty()){
+			MyNode* pn = nodes.front();
+			if (_LEFT(pn))	nodes.push_back(_LEFT(pn));
+			if (_RIGHT(pn)) nodes.push_back(_RIGHT(pn));
+			delete pn;
+			nodes.pop_front();
+		}
+	}
+	MyNode** _find(tKey k, std::stack<MyNode**>& path){
+		MyNode** ppn = &root;
+		tCmp cmp;
+		while(*ppn){
+			path.push(ppn);
+			if(not cmp(_KEY(*ppn),k) and not cmp(k,_KEY(*ppn))) return ppn;
+			if(cmp(_KEY(*ppn),k)) ppn = &_LEFT(*ppn);
+			else ppn = &_RIGHT(*ppn);
+		}
+		return nullptr;
+	}
+	void _right_rot(MyNode** ppn){
+		MyNode* pn = *ppn ;
+
+		*ppn = _LEFT(pn);
+		_LEFT(pn) = _RIGHT(*ppn);
+		_RIGHT(*ppn) = pn;
+	}
+	void _left_rot(MyNode** ppn){
+		MyNode* pn = *ppn;
+
+		*ppn = _RIGHT(pn);
+		_RIGHT(pn) = _LEFT(*ppn);
+		_LEFT(*ppn) = pn;
+	}
+	void _print(std::ostream& os, std::function<void(const MyNode*,std::ostream&)>& disp_label){
+		using namespace std;
+		os << endl << "strict graph {" << endl;
+					
+		std::list<MyNode*> nodes;
+		if (root) {
+			MyNode* rightmost = root;
+			while(true){
+				if (_RIGHT(rightmost)){
+					rightmost = _RIGHT(rightmost);
+				}
+				else {
+					break;
+				}
 			}
-		 }
+			if (root) 
+				nodes.push_back(root);
+
+			typename std::list<MyNode* >::iterator it = nodes.begin();
+			while(nodes.end() != it) {
+				if (_LEFT(*it)) nodes.push_back(_LEFT(*it));
+				if (_RIGHT(*it)) nodes.push_back(_RIGHT(*it));
+				++it;
+			}
+			for (const MyNode* pn:nodes){
+				disp_label(pn,os);
+			}
+			os << std::endl;
+		}
+
+		while(not nodes.empty()) {
+			MyNode* pn = nodes.front();
+			if (_LEFT(pn)) {
+				os << "\t" << pn << " -- " << _LEFT(pn) << endl;
+			}
+			if (_RIGHT(pn)) {
+				os << "\t" << pn << " -- " << _RIGHT(pn) << endl;
+			}
+			nodes.pop_front();
+		}
+		os << "}" << endl;
+	}
+public:
+	bool empty() { return root == nullptr; }
+public:
+	class iterator {
+	public:
+		iterator(){}
+		iterator(const iterator& it): nodes(it.nodes) {}
+		iterator(iterator&& it): nodes(std::move(it.nodes)) {}
+		const iterator& operator = (const iterator& it) { if (&it!=this) nodes=it.nodes; return *this; }
+		iterator& operator = (iterator&& it) { nodes=std::move(it.nodes); return *this; }
+	private:
+		iterator(std::unique_ptr<std::stack<MyNode*>>&& nodes): nodes(std::move(nodes)){}
+		std::shared_ptr<std::stack<MyNode*>> nodes;
+	};
+protected:
+	MyNode* root;
+};
+
+template<class tKey, class tCmp=std::less<tKey>>
+class AVLTree: private BinaryTree<tKey,AVLNode<tKey>,tCmp> {
+	typedef BinaryTree<tKey,AVLNode<tKey>,tCmp>	MyBaseTree;
+	typedef typename MyBaseTree::MyNode MyNode;
+	public:
 		void add(tKey k){
-			MyNode** ppn = &root;
 			std::stack<MyNode**> path;
-			tCmp cmp;
-			while(*ppn){
-				path.push(ppn);
-				if (cmp(_KEY(*ppn), k)) ppn = &_RIGHT(*ppn);
-				else ppn = &_LEFT(*ppn);
-			}
-			*ppn = new MyNode(k);
-			while(not path.empty()){
-				ppn = path.top();
-				_HEIGHT(*ppn) = _max_height(*ppn);
-				_rebalance(ppn);
-				path.pop();
+			MyNode** ppn = MyBaseTree::_find(k,path);
+			if (not *ppn) {
+				*ppn = new MyNode(k);
+				while(not path.empty()){
+					ppn = path.top();
+					_HEIGHT(*ppn) = _max_height(*ppn);
+					_rebalance(ppn);
+					path.pop();
+				}
 			}
 		}
 		bool remove(tKey k) {
 			std::stack<MyNode**> path;
-			MyNode** ppn = &root;
-			tCmp cmp;
-			while (*ppn){
-				path.push(ppn);
-				if (not cmp(_KEY(*ppn),k) and not cmp(k,_KEY(*ppn))) break;
-				else if (not cmp(_KEY(*ppn),k)) ppn = &_LEFT(*ppn);
-				else ppn = &_RIGHT(*ppn);
-			}
+			MyNode** ppn = MyBaseTree::_find(k,path);
 			if (*ppn){
 				MyNode* pn = *ppn;
 				if (not _LEFT(*ppn) and not _RIGHT(*ppn)){
@@ -96,7 +192,6 @@ class AVLTree {
 					}
 				}
 				delete pn;
-				path.pop();
 				while(not path.empty()){
 					ppn = path.top();
 					_HEIGHT(*ppn) = _max_height(*ppn);
@@ -108,46 +203,10 @@ class AVLTree {
 			return false;
 		}
 		void print(std::ostream& os){
-			using namespace std;
-			os << endl << "strict graph {" << endl;
-						
-			std::list<MyNode*> nodes;
-			if (root) {
-				MyNode* rightmost = root;
-				while(true){
-					if (_RIGHT(rightmost)){
-						rightmost = _RIGHT(rightmost);
-					}
-					else {
-						break;
-					}
-				}
-				if (root) 
-					nodes.push_back(root);
-
-				typename std::list<MyNode* >::iterator it = nodes.begin();
-				while(nodes.end() != it) {
-					if (_LEFT(*it)) nodes.push_back(_LEFT(*it));
-					if (_RIGHT(*it)) nodes.push_back(_RIGHT(*it));
-					++it;
-				}
-				for (const MyNode* pn:nodes){
-					os << "\t" << _KEY(pn) << " [label=\"" << _KEY(pn) << " bf=" << _BF(pn) /*<< " h=" << _HEIGHT(pn)*/ << "\"]" << std::endl;
-				}
-				os << std::endl;
-			}
-
-			while(not nodes.empty()) {
-				MyNode* pn = nodes.front();
-				if (_LEFT(pn)) {
-					os << "\t" << pn << " -- " << _LEFT(pn) << endl;
-				}
-				if (_RIGHT(pn)) {
-					os << "\t" << pn << " -- " << _RIGHT(pn) << endl;
-				}
-				nodes.pop_front();
-			}
-			os << "}" << endl;
+			std::function<void(const MyNode*,std::ostream&)> f = [this](const MyNode* pn, std::ostream& os) {
+				os << "\t" << _KEY(pn) << " [label=\"" << _KEY(pn) << " bf=" << _BF(pn) /*<< " h=" << _HEIGHT(pn)*/ << "\"]" << std::endl;
+			};
+			this->_print(os,f);
 		}
 	private:
 	void _rebalance(MyNode** ppn){
@@ -169,32 +228,16 @@ class AVLTree {
 	void _right_rot(MyNode** ppn){
 		MyNode* pn = *ppn ;
 
-		*ppn = _LEFT(pn);
-		_LEFT(pn) = _RIGHT(*ppn);
-		_RIGHT(*ppn) = pn;
-
+		MyBaseTree::_right_rot(ppn);
 		_HEIGHT(pn) = _max_height(pn);
 		_HEIGHT(*ppn) = _max_height(*ppn);
 	}
 	void _left_rot(MyNode** ppn){
 		MyNode* pn = *ppn;
-
-		*ppn = _RIGHT(pn);
-		_RIGHT(pn) = _LEFT(*ppn);
-		_LEFT(*ppn) = pn;
 		
+		MyBaseTree::_left_rot(ppn);
 		_HEIGHT(pn) = _max_height(pn);
 		_HEIGHT(*ppn) = _max_height(*ppn);
-	}
-	MyNode** _find(tKey k){
-		MyNode** ppn = &root;
-		tCmp cmp;
-		while(*ppn){
-			if(not cmp(_KEY(*ppn),k) and not cmp(k,_KEY(*ppn))) return ppn;
-			if(cmp(_KEY(*ppn),k)) ppn = &_LEFT(ppn);
-			else ppn = &_RIGHT(ppn);
-		}
-		return nullptr;
 	}
 	bf_t _bf(const MyNode* pn) const {
 		return _right_height(pn) - _left_height(pn);
@@ -212,5 +255,32 @@ class AVLTree {
 	int _max_height(MyNode* pn){
 		return std::max(_left_height(pn),_right_height(pn));
 	}
-	MyNode* root;
+};
+
+
+#define _IS_BLACK(n) ((n)->type==BLACK)
+#define _IS_RED(n) ((n)->type)==RED)
+#define _BLACK(n) (n)->type=BLACK
+#define _RED(n) (n)->type=RED
+
+template<class tKey, class tCmp=std::less<tKey>>
+class RedBlackTree: private BinaryTree<tKey,RedBlackTreeNode<tKey>,tCmp> {
+	typedef BinaryTree<tKey,RedBlackTreeNode<tKey>,tCmp>	MyBaseTree;
+	typedef typename MyBaseTree::MyNode MyNode;
+public:
+	void add(tKey k){
+		std::stack<MyNode**> path;
+		MyNode** ppn = this->_find(k,path);
+		if (not *ppn) {
+			*ppn = new MyNode(k);
+			if (ppn==&this->root){
+				_BLACK(*ppn);
+			}
+			else if (not path.empty()){
+				
+			}
+		}
+	}
+	bool remove(tKey k) { return false; }
+	void print(std::ostream& os){ }
 };
