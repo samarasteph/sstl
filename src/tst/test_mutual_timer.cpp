@@ -31,6 +31,7 @@ public:
 	NotifiedMock(): m_called(0){}
 	NotifiedMock(const std::string& name): m_called(0), _name(name){}
 	bool notify () override {
+		//std::cout << _name << " notified " << m_called << std::endl;
 		m_called += 1;
 		return true;
 	}
@@ -136,9 +137,7 @@ TEST(MutualTimer, unregister){
 	mt.start();
 
 	mt.registerNotified(static_cast<MutualTimer::INotified*>(&mock), period);
-
 	thread_sleep(std::chrono::milliseconds(1510));
-
 	mt.unregisterNotified(static_cast<MutualTimer::INotified*>(&mock));
 
 	thread_sleep(std::chrono::milliseconds(510));
@@ -148,8 +147,8 @@ TEST(MutualTimer, unregister){
 
 TEST(MutualTimer, multiple_seconds){
 	MutualTimer mt;
-	constexpr uint NB = 100;
-	constexpr uint MOD = 30;
+	constexpr uint NB = 10;
+	constexpr uint MOD = 3;
 
 	NotifiedMockClock mock[NB];
 	period_t period;
@@ -166,11 +165,13 @@ TEST(MutualTimer, multiple_seconds){
 
 	mt.start();
 
-	thread_sleep(std::chrono::seconds(MOD+1));
+	thread_sleep(std::chrono::seconds(MOD+2));
 
 	for(int i : range<NB>(0)){
 		mt.unregisterNotified(static_cast<MutualTimer::INotified*>(&mock[i]));
 	}
+	
+	mt.stop();
 
 	for(int i : range<NB>(0)){
 		double expected = double(MOD) / double(elapsed(i));
@@ -179,7 +180,6 @@ TEST(MutualTimer, multiple_seconds){
 		//std::cout << mock[i]._name << " called " << mock[i].called() << " times" << std::endl;
 	}
 	ASSERT_TRUE(true);
-
 }
 
 TEST(MutualTimer, multiple_milliseconds){
@@ -208,6 +208,7 @@ TEST(MutualTimer, multiple_milliseconds){
 		mt.unregisterNotified(static_cast<MutualTimer::INotified*>(&mock[i]));
 	}
 
+	mt.stop();
 	for(int i : range<NB>(0)){
 		double expected = double(MOD) / double(elapsed(i));
 		expected -= expected * 1E-1 * MOD;
