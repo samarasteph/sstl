@@ -324,8 +324,26 @@ typedef struct __TIME_DISPATCHER__ {
 		}
 		return pn->p_next;
 	}
-	void reschedule(PTDNode pn, uint32_t index_node){
+	void reschedule(PTDNode last, uint32_t index_node){
+		while(NODES[index_node]!=last) {
+			PTDNode pn = NODES[index_node];
+			NODES[index_node] = pn->p_next;
+			pn->p_next->p_prev = nullptr;
 
+			PTDNode it = last, prev = it ? it->p_prev : nullptr;
+			while (it and it->time < pn->time) {
+				prev = it;
+				it = it->p_next;
+			}
+			pn->p_next = it;
+			pn->p_prev = prev;
+			if (it) {
+				it->p_prev = pn;
+			}
+			if(prev){
+				prev->p_next = pn;
+			}
+		}
 	}
 	uint64_t trigger_timers(uint64_t now){
 		uint64_t sleep_ns = 0xFFFFFFFFFFFFFFFF;
@@ -342,17 +360,7 @@ typedef struct __TIME_DISPATCHER__ {
 				pn = pn->p_next;
 				count += 1;
 			}
-			
-			PTDNode p = NODES[index], pnext;
-			PTDNode* pinsert = pn ? &pn->p_next : &NODES[index];
-			while (p && p != pn){
-				pnext = remove(p, index);
-				insert(p, pinsert);
-				if(slots.find(index)==slots.end()){
-					slots.insert(index);
-				}
-				p = pnext;
-			}
+			reschedule(pn,index);
 			sleep_ns = std::min<uint64_t>(sleep_ns, NODES[index]->time);
 		}
 		return sleep_ns - now;
