@@ -70,6 +70,36 @@ protected:
 		}
 		return nullptr;
 	}
+	MyNode* _insert(tKey k){
+		MyNode* parent = root;
+		tCmp cmp;
+
+		while(parent){
+			if(cmp(_KEY(parent),k)){
+				if (not _LEFT(parent)){
+					_LEFT(parent) = new MyNode(k);
+					return parent;
+				}
+				else {
+					parent = _LEFT(parent);
+				}
+			}
+			else if(not cmp(_KEY(parent),k) and not cmp(k,_KEY(parent))) {
+				//strict equality: no insertion
+				return nullptr;
+			}
+			else {
+				if (not _RIGHT(parent)){
+					_RIGHT(parent) = new MyNode(k);
+					return parent;
+				}
+				else {
+					parent = _RIGHT(parent);
+				}
+			}
+		}
+		return parent;
+	}
 	void _right_rot(MyNode** ppn){
 		MyNode* pn = *ppn ;
 
@@ -269,17 +299,7 @@ class RedBlackTree: private BinaryTree<tKey,RedBlackTreeNode<tKey>,tCmp> {
 	typedef typename MyBaseTree::MyNode MyNode;
 public:
 	void add(tKey k){
-		std::stack<MyNode**> path;
-		MyNode** ppn = this->_find(k,path);
-		if (not *ppn) {
-			*ppn = new MyNode(k);
-			if (ppn==&this->root){
-				_BLACK(*ppn);
-			}
-			else if (not path.empty()){
-				
-			}
-		}
+		auto _insert(k);
 	}
 	bool remove(tKey k) { return false; }
 	void print(std::ostream& os){ }
