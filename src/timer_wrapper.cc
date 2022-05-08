@@ -270,6 +270,7 @@ typedef struct __TIME_DISPATCHER__ {
 			slots.insert(index);
 		}
 		insert(n, &NODES[index]);
+		TRACE("insert " << n << " period=" << p->nanos);
 		return n;
 	}
 
@@ -325,25 +326,18 @@ typedef struct __TIME_DISPATCHER__ {
 		return pn->p_next;
 	}
 	void reschedule(PTDNode last, uint32_t index_node){
-		while(NODES[index_node]!=last) {
-			PTDNode pn = NODES[index_node];
-			NODES[index_node] = pn->p_next;
-			pn->p_next->p_prev = nullptr;
-
-			PTDNode it = last, prev = it ? it->p_prev : nullptr;
-			while (it and it->time < pn->time) {
-				prev = it;
-				it = it->p_next;
-			}
-			pn->p_next = it;
-			pn->p_prev = prev;
-			if (it) {
-				it->p_prev = pn;
-			}
-			if(prev){
-				prev->p_next = pn;
+		TRACE("reschedule BEGIN last=" << last);
+		if(last){
+			PTDNode first = NODES[index_node];
+			NODES[index_node] = last;
+			last->p_prev = nullptr;
+			while(first != last) {
+				PTDNode next = first->p_next;
+				insert(first,&NODES[index_node]);
+				first = next;
 			}
 		}
+		TRACE("reschedule END");
 	}
 	uint64_t trigger_timers(uint64_t now){
 		uint64_t sleep_ns = 0xFFFFFFFFFFFFFFFF;

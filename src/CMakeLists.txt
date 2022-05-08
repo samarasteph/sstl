@@ -8,6 +8,6 @@ include_directories(src ${Boost_INCLUDE_DIRS})
 add_subdirectory(tst)
 
 # specify the C++ standard
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
 add_library(${BINARY} Allocator.cpp rwlock.cpp timer_wrapper.cc)

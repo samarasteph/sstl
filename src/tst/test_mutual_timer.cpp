@@ -16,7 +16,7 @@ void thread_sleep(const TimeUnit& elapse) {
 }
 
 template<size_t Size>
-std::array<int,Size> range(int min){
+constexpr std::array<int,Size> range(int min){
 
 	std::array<int,Size> a;
 

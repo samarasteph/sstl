@@ -1,7 +1,7 @@
 enable_testing()
 
 # specify the C++ standard
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(BINARY ${CMAKE_PROJECT_NAME}_test)
 # set GTEST_ROOT
 find_package(GTest REQUIRED)
