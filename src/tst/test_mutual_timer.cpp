@@ -14,10 +14,14 @@ template<class TimeUnit>
 void thread_sleep(const TimeUnit& elapse) {
 	std::this_thread::sleep_for(elapse);
 }
-
+#if __cplusplus >= 201703L
 template<size_t Size>
-constexpr std::array<int,Size> range(int min){
-
+constexpr std::array<int,Size> range(int min)
+#elif __cplusplus >= 201103L
+template<size_t Size>
+std::array<int,Size> range(int min)
+#endif
+{
 	std::array<int,Size> a;
 
 	for(int i=0; i<Size ; ++i)
