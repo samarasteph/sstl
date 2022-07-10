@@ -3,7 +3,7 @@
 #include <cmath>
 #include <iostream>
 
-#if 1
+#if 0
 #define LOG(msg) std::cout << msg << std::endl 
 #else
 #define LOG(msg)
@@ -326,76 +326,80 @@ public:
 		this->_print(os,f);
 	}
 	private:
-		MyNode* _uncle(MyNode* node){
-			if(_PARENT(node) and _PARENT(_PARENT(node))){
-				MyNode* granpa = _PARENT(_PARENT(node));
-				if (_LEFT(granpa)==_PARENT(node)) return _RIGHT(granpa);
-				else return _LEFT(granpa);
-			}
-			return nullptr;
+	MyNode* _uncle(MyNode* node){
+		if(_PARENT(node) and _PARENT(_PARENT(node))){
+			MyNode* granpa = _PARENT(_PARENT(node));
+			if (_LEFT(granpa)==_PARENT(node)) return _RIGHT(granpa);
+			else return _LEFT(granpa);
 		}
-		bool _recolour(MyNode* node){
-			if (node==this->root) {
-				LOG("Node k="<<_KEY(node)<< " is ROOT");
-				_BLACK(node);
+		return nullptr;
+	}
+	bool _recolour(MyNode* node){
+		if (node==this->root) {
+			LOG("Node k="<<_KEY(node)<< " is ROOT");
+			_BLACK(node);
+			return true;
+		}
+		if(_IS_RED(node) and _PARENT(node) and _IS_RED(_PARENT(node))){
+			MyNode* uncle = _uncle(node); 
+			if (uncle and _IS_RED(uncle)){
+				LOG(__func__<<" Change parent color parent k=" << _KEY(_PARENT(node)) << " uncle k="<<_KEY(uncle));
+				_RED(_PARENT(uncle));
+				_BLACK(_PARENT(node));
+				_BLACK(uncle);
+				// same process with granpa
+				_recolour(_PARENT(uncle));
 				return true;
 			}
-			if(_IS_RED(node) and _PARENT(node) and _IS_RED(_PARENT(node))){
-				MyNode* uncle = _uncle(node); 
-				if (uncle and _IS_RED(uncle)){
-					LOG(__func__<<" Change parent color parent k=" << _KEY(_PARENT(node)) << " uncle k="<<_KEY(uncle));
-					_RED(_PARENT(uncle));
-					_BLACK(_PARENT(node));
-					_BLACK(uncle);
-					// same process with granpa
-					_recolour(_PARENT(uncle));
-					return true;
-				}
-			}
-			return false;
 		}
-		void _rotate(MyNode* node){
-			if (_PARENT(node) and _PARENT(_PARENT(node))){
-				auto parent = _PARENT(node), granpa = _PARENT(parent);
-				if(node == _LEFT(parent) and parent == _LEFT(granpa)){ //All left => Right rotate
-					LOG("Rotate LL");
-					_PARENT(parent) = _PARENT(granpa);
-					_PARENT(granpa) = parent;
-					_LEFT(granpa) = _RIGHT(parent);
-					_RIGHT(parent) = granpa;
-					_SWAP_COL(parent,granpa);
-					if (_PARENT(parent)==nullptr) this->root = parent;
-				}
-				else if(node == _RIGHT(parent) and parent == _RIGHT(granpa)){ //All right => Left rotate
-					LOG("Rotate RR");
-					_PARENT(parent) = _PARENT(granpa);
-					_PARENT(granpa) = parent;
-					_RIGHT(granpa) = _LEFT(parent);
-					_LEFT(parent) = granpa;
-					_SWAP_COL(parent,granpa);
-					if (_PARENT(parent)==nullptr) this->root = parent;
-				}
-				else if(node == _RIGHT(parent) and parent == _LEFT(granpa)){
-					LOG("Rotate LR");
-					_PARENT(node) = granpa;
-					_PARENT(parent) = node;
-					// left rotate node over parent
-					_LEFT(granpa) = node;
-					_RIGHT(parent) = _LEFT(node);
-					_LEFT(node) = parent;
-					_rotate(parent); // finalize with RIGHT rotation (case 1 LL)
-				}
-				else { // node == LEFT(parent) and parent == RIGHT(granpa)
-					LOG("Rotate RL");
-					_PARENT(node) = granpa;
-					_PARENT(parent) = node;
-					// right rotate node over parent
-					_RIGHT(granpa) = node;
-					_LEFT(parent) = _RIGHT(node);
-					_RIGHT(node) = parent;
-					_rotate(parent); // finalize with LEFT rotation (case 2 RR) 
-				}
+		return false;
+	}
+	void _rotate(MyNode* node){
+		if (_PARENT(node) and _PARENT(_PARENT(node))){
+			auto parent = _PARENT(node), granpa = _PARENT(parent);
+			if(node == _LEFT(parent) and parent == _LEFT(granpa)){ //All left => Right rotate
+				LOG("Rotate LL");
+				MyBaseTree::_right_rot( get_pp(granpa) );
+				_PARENT(parent) = _PARENT(granpa);
+				_PARENT(granpa) = parent;
+				_SWAP_COL(parent,granpa);
 			}
-			else LOG(__func__<<" Node k="<<_KEY(node)<< " has no granpa or parent");
+			else if(node == _RIGHT(parent) and parent == _RIGHT(granpa)){ //All right => Left rotate
+				LOG("Rotate RR");
+				MyBaseTree::_left_rot( get_pp(granpa) );
+				_PARENT(parent) = _PARENT(granpa);
+				_PARENT(granpa) = parent;
+				_SWAP_COL(parent,granpa);
+			}
+			else if(node == _RIGHT(parent) and parent == _LEFT(granpa)){
+				LOG("Rotate LR");
+				// left rotate node over parent
+				MyBaseTree::_left_rot(&_LEFT(granpa));
+				_PARENT(node) = granpa;
+				_PARENT(parent) = node;
+				_rotate(parent); // finalize with RIGHT rotation (case 1 LL)
+			}
+			else { // node == LEFT(parent) and parent == RIGHT(granpa)
+				LOG("Rotate RL");
+				// right rotate node over parent
+				MyBaseTree::_right_rot(&_RIGHT(granpa));
+				_PARENT(node) = granpa;
+				_PARENT(parent) = node;
+				_rotate(parent); // finalize with LEFT rotation (case 2 RR) 
+			}
 		}
+		else LOG(__func__<<" Node k="<<_KEY(node)<< " has no granpa or parent");
+	}
+	MyNode** get_pp(MyNode* node){
+		if (_PARENT(node)==nullptr) { 
+			LOG("node parent pointer is ROOT");
+			return &this->root; 
+		}
+		if(_LEFT(_PARENT(node))==node) {
+			LOG("node parent pointer is LEFT");
+			return &_LEFT(_PARENT(node));
+		}  
+		LOG("node parent pointer is RIGHT");
+		return &_RIGHT(_PARENT(node));
+	}
 };
