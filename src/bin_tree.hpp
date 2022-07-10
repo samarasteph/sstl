@@ -3,7 +3,7 @@
 #include <cmath>
 #include <iostream>
 
-#if 0
+#if 1
 #define LOG(msg) std::cout << msg << std::endl 
 #else
 #define LOG(msg)
@@ -336,12 +336,14 @@ public:
 		}
 		bool _recolour(MyNode* node){
 			if (node==this->root) {
+				LOG("Node k="<<_KEY(node)<< " is ROOT");
 				_BLACK(node);
 				return true;
 			}
 			if(_IS_RED(node) and _PARENT(node) and _IS_RED(_PARENT(node))){
 				MyNode* uncle = _uncle(node); 
 				if (uncle and _IS_RED(uncle)){
+					LOG(__func__<<" Change parent color parent k=" << _KEY(_PARENT(node)) << " uncle k="<<_KEY(uncle));
 					_RED(_PARENT(uncle));
 					_BLACK(_PARENT(node));
 					_BLACK(uncle);
@@ -355,7 +357,7 @@ public:
 		void _rotate(MyNode* node){
 			if (_PARENT(node) and _PARENT(_PARENT(node))){
 				auto parent = _PARENT(node), granpa = _PARENT(parent);
-				if(node == _LEFT(parent) and parent == _LEFT(granpa)){
+				if(node == _LEFT(parent) and parent == _LEFT(granpa)){ //All left => Right rotate
 					LOG("Rotate LL");
 					_PARENT(parent) = _PARENT(granpa);
 					_PARENT(granpa) = parent;
@@ -364,7 +366,7 @@ public:
 					_SWAP_COL(parent,granpa);
 					if (_PARENT(parent)==nullptr) this->root = parent;
 				}
-				else if(node == _RIGHT(parent) and parent == _RIGHT(granpa)){
+				else if(node == _RIGHT(parent) and parent == _RIGHT(granpa)){ //All right => Left rotate
 					LOG("Rotate RR");
 					_PARENT(parent) = _PARENT(granpa);
 					_PARENT(granpa) = parent;
@@ -381,7 +383,7 @@ public:
 					_LEFT(granpa) = node;
 					_RIGHT(parent) = _LEFT(node);
 					_LEFT(node) = parent;
-					_rotate(parent); // finalize with RIGHT rotation (case 1)
+					_rotate(parent); // finalize with RIGHT rotation (case 1 LL)
 				}
 				else { // node == LEFT(parent) and parent == RIGHT(granpa)
 					LOG("Rotate RL");
@@ -391,8 +393,9 @@ public:
 					_RIGHT(granpa) = node;
 					_LEFT(parent) = _RIGHT(node);
 					_RIGHT(node) = parent;
-					_rotate(parent); // finalize with LEFT rotation (case 2) 
+					_rotate(parent); // finalize with LEFT rotation (case 2 RR) 
 				}
 			}
+			else LOG(__func__<<" Node k="<<_KEY(node)<< " has no granpa or parent");
 		}
 };
