@@ -309,7 +309,7 @@ public:
 			if (parent) LOG("Add new node key=" << k << (_LEFT(parent)==new_node?" LEFT":" RIGHT"));
 			else LOG("Add new node key=" << k );
 			_PARENT(new_node) = parent;
-			if(not _recolour(new_node)){
+			if(parent and _IS_RED(parent) and not _recolour(new_node)){
 				LOG("rotate key=" << k);
 				_rotate(new_node);
 			}
