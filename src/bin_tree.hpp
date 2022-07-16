@@ -306,13 +306,12 @@ public:
 		MyNode* new_node = nullptr;
 		auto parent = MyBaseTree::_insert(k,&new_node);
 		if (new_node) { // if key already exist, no new node
-			if (parent) LOG("Add new node key=" << k << (_LEFT(parent)==new_node?" LEFT":" RIGHT"));
-			else LOG("Add new node key=" << k );
 			_PARENT(new_node) = parent;
-			if(parent and _IS_RED(parent) and not _recolour(new_node)){
-				LOG("rotate key=" << k);
-				_rotate(new_node);
+			if (parent) {
+				LOG("Add new node key=" << k << (_LEFT(parent)==new_node?" LEFT":" RIGHT"));
 			}
+			else LOG("Add new node key=" << k );
+			_evaluate(new_node);
 		}
 	}
 	bool remove(tKey k) { return false; }
@@ -334,11 +333,10 @@ public:
 		}
 		return nullptr;
 	}
-	bool _recolour(MyNode* node){
+	void _evaluate(MyNode* node){
 		if (node==this->root) {
 			LOG("Node k="<<_KEY(node)<< " is ROOT");
 			_BLACK(node);
-			return true;
 		}
 		if(_IS_RED(node) and _PARENT(node) and _IS_RED(_PARENT(node))){
 			MyNode* uncle = _uncle(node); 
@@ -348,11 +346,12 @@ public:
 				_BLACK(_PARENT(node));
 				_BLACK(uncle);
 				// same process with granpa
-				_recolour(_PARENT(uncle));
-				return true;
+				_evaluate(_PARENT(uncle));
+			}
+			else {
+				_rotate(node);
 			}
 		}
-		return false;
 	}
 	void _rotate(MyNode* node){
 		if (_PARENT(node) and _PARENT(_PARENT(node))){
